@@ -1,0 +1,13 @@
+### Description Field 1 – Project Overview
+
+Developed SwapDesk, a full-stack hospital staff shift-swapping application using the MERN stack (MongoDB, Express.js, React.js and Node.js). The application allows hospital staff members to create shift-swap requests, send requests to colleagues, accept or decline incoming requests, and cancel pending requests. Administrators can review, approve or reject colleague-accepted swap requests through a dedicated administrative dashboard.
+
+The application includes role-based access control for staff and administrators, JWT-based authentication, password hashing, staff management, shift management, assignment tracking, request status management and audit history. The frontend provides separate interfaces for staff members and administrators, making the complete shift-swapping workflow accessible through a user-friendly interface.
+
+### Description Field 2 – Implementation and Technical Solutions
+
+Implemented backend REST APIs using Node.js, Express.js and Mongoose, with MongoDB models for Staff, Shift, Assignment and SwapRequest. Developed roster validation logic to enforce clinical role compatibility, active staff status, valid professional licences, prevention of overlapping shifts, maximum 48 working hours per week and duplicate assignment prevention.
+
+Implemented a multi-stage swap approval workflow consisting of colleague acceptance followed by administrator approval. Used MongoDB transactions to ensure that assignment deletion, new assignment creation and request status updates happen atomically. Added concurrency protection to prevent duplicate or conflicting approvals.
+
+Developed React-based staff and administrator dashboards using Axios for API communication. Implemented request creation, status tracking, accept/decline/cancel actions, loading and error handling, and administrative request management. Used JWT authentication, bcrypt password hashing and middleware-based authorization to secure application endpoints.

@@ -1,0 +1,13 @@
+### Description Field 1 – Debugging Overview
+
+Performed debugging and optimization of an existing SwapDesk application by identifying and correcting backend and frontend issues across the provided server routes, controller logic and React MyRequests component. The task focused on improving application security, data consistency, request handling, roster validation, pagination, concurrency safety and frontend functionality while preserving the original implementation.
+
+Identified issues including unsafe MongoDB query filtering, missing input validation, incorrect pagination and sorting, insufficient authorization checks, invalid approval-state handling, incorrect roster eligibility checks, assignment deletion errors, audit history inconsistencies, missing transaction protection and frontend API integration and state-management problems.
+
+### Description Field 2 – Fixes, Testing and Documentation
+
+Created corrected versions of the original Part 2 files inside a separate debug directory while preserving the original source files. Implemented query parameter allowlisting, status and cursor validation, capped pagination, stable compound sorting using createdAt and _id, and improved error handling.
+
+Corrected approval logic to allow only requests in the pending_admin state. Improved staff eligibility validation by checking the correct clinical role, licence validity against the shift date, overlapping shifts across calendar boundaries, weekly working-hour limits and the receiving colleague's existing assignments. Added transactional assignment transfers, concurrency safeguards, conditional cancellation updates and accurate audit history.
+
+Improved the React MyRequests component by correcting API integration, event handlers, state updates, loading and error handling, request refreshing and list rendering. Added automated regression tests covering unsafe query filters, pagination, requester authorization, cancellation audit history and concurrent approval behavior. Created DEBUGGING.md to document identified problems, their root causes, implemented fixes and performance considerations as the application scales.

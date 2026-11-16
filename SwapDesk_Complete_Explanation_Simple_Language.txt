@@ -1,0 +1,524 @@
+SWAPDESK – COMPLETE ASSIGNMENT EXPLANATION Easy-language guide for
+understanding Task 1 and Task 2
+
+============================================================
+INTRODUCTION
+============================================================
+
+This document explains the SwapDesk assignment in simple language. It
+covers what the application does, how its main parts work, what was
+built for Task 1, what was corrected for Task 2, and how the important
+technical decisions help keep the application safe and reliable.
+
+The project uses the MERN stack: - MongoDB: stores application data. -
+Express.js: handles backend routes and HTTP requests. - React: builds
+the user interface. - Node.js: runs the backend JavaScript application.
+
+  --------------------------------------------
+  TASK 1 – BUILDING THE SWAPDESK APPLICATION
+  --------------------------------------------
+
+1.  What is SwapDesk?
+
+SwapDesk is a staff shift-swapping application designed for a hospital
+or similar workplace.
+
+Staff members sometimes cannot work a shift assigned to them. Instead of
+arranging a swap informally, they can use SwapDesk to request that
+another eligible colleague take the shift.
+
+The application has two main user roles:
+
+STAFF: - View their assigned shifts. - Send a shift-swap request to a
+colleague. - Accept or decline a request sent to them. - Cancel a
+request when cancellation is allowed. - View the status of their
+requests.
+
+ADMIN: - View swap requests. - Review requests that have been accepted
+by the colleague. - Approve or reject requests. - View relevant staff
+and roster information.
+
+A key point: a colleague accepting a request does not automatically
+complete the swap. The request still needs admin approval.
+
+2.  How the swap process works
+
+The normal process has these stages:
+
+Step 1 – Staff member creates a request. A staff member selects one of
+their assigned shifts and chooses a colleague to receive the request.
+
+Step 2 – The request waits for the colleague. The request status is
+pending_colleague. The colleague can accept or decline it.
+
+Step 3 – The colleague responds. If the colleague accepts, the request
+moves to pending_admin. If they decline, the request is marked declined.
+
+Step 4 – Admin reviews the request. An admin checks the request and the
+roster rules. The admin can approve or reject it.
+
+Step 5 – The swap is completed. Only after successful admin approval is
+the original assignment transferred to the colleague. The request is
+then marked approved.
+
+Other possible statuses include rejected, cancelled and expired.
+
+3.  Main database models
+
+A model describes the type of information stored in MongoDB.
+
+STAFF Stores information about each staff member, such as their name,
+role, active status, licence information and other required details.
+
+SHIFT Stores shift information, such as the start time, end time and
+required clinical role.
+
+ASSIGNMENT Connects a staff member to a shift. It represents who is
+currently assigned to work a particular shift.
+
+SWAP REQUEST Stores the swap request details, including the requester,
+colleague, shift, current status and audit information about actions
+taken.
+
+These models are connected. For example, a swap request refers to a
+shift and to the staff members involved in the request.
+
+4.  Roster validation rules
+
+Before a swap is approved, the application must check that the colleague
+is legally and practically able to work the shift.
+
+Rule 1 – Clinical role must match. The colleague must have the clinical
+role required for the shift. For example, a shift requiring a nurse must
+not be assigned to someone who does not meet that requirement.
+
+Rule 2 – Staff member must be active. An inactive staff member must not
+receive a new shift assignment.
+
+Rule 3 – Licence must be valid. If the role requires a licence, that
+licence must remain valid on the date of the shift.
+
+Rule 4 – No overlapping shifts. A staff member must not be assigned two
+shifts that overlap in time. This check must also handle shifts that
+continue past midnight.
+
+Rule 5 – Weekly working hours must not exceed 48. The application checks
+the colleague’s total working hours for the Monday-to-Sunday week. It
+must correctly account for shifts that cross a week boundary.
+
+Rule 6 – No duplicate assignment. The same shift must not accidentally
+be assigned more than once to the same staff member.
+
+These checks help prevent unsafe or invalid rosters.
+
+5.  Backend APIs
+
+The backend exposes REST API endpoints. An endpoint is a URL and HTTP
+method that allows the frontend to request an operation.
+
+The Task 1 swap-request API includes operations such as:
+
+-   POST /api/swap-requests Creates a new swap request.
+
+-   GET /api/swap-requests/mine Gets the current staff member’s relevant
+    requests.
+
+-   PATCH /api/swap-requests/:id/respond Records the colleague’s
+    response.
+
+-   PATCH /api/swap-requests/:id/cancel Cancels a request when the user
+    is allowed to do so.
+
+-   GET /api/swap-requests/admin Gets requests for admin review.
+
+-   GET /api/swap-requests/admin/weekly-summary Gets a weekly summary
+    for admin use.
+
+-   PATCH /api/swap-requests/admin/:id/approve Approves a request and
+    completes the assignment transfer.
+
+-   PATCH /api/swap-requests/admin/:id/reject Rejects a request.
+
+The exact route definitions in the project should be treated as the
+source of truth if an endpoint has been changed during implementation.
+
+6.  Authentication and authorization
+
+Authentication answers: “Who are you?” Authorization answers: “What are
+you allowed to do?”
+
+JWT authentication: After a successful login, the server issues an
+access token. The frontend sends that token with protected API requests.
+The backend verifies the token before allowing access.
+
+Password hashing: Passwords are hashed with bcrypt before being stored.
+The application should not store users’ plain-text passwords.
+
+Role-based authorization: Middleware checks whether the logged-in user
+has the correct role. For example, an admin-only endpoint must not be
+available to an ordinary staff user.
+
+7.  Why database transactions are important
+
+Approving a swap changes more than one database record: - The
+requester’s assignment must be removed. - The colleague’s assignment
+must be created. - The swap request status and audit details must be
+updated.
+
+These changes belong together. If one succeeds but another fails, the
+roster could become incorrect.
+
+A MongoDB transaction groups the changes into one atomic operation: - If
+every operation succeeds, the transaction commits. - If an operation
+fails, the transaction is rolled back.
+
+MongoDB transactions require a replica set or sharded cluster. A
+standalone MongoDB server does not support the same multi-document
+transaction workflow.
+
+8.  Handling concurrent approvals
+
+A concurrency problem can happen when two operations try to change the
+same roster at nearly the same time.
+
+For example, two admins or requests might try to assign shifts to the
+same colleague simultaneously. If both checks use old roster data, both
+could appear valid.
+
+The implementation uses transaction-based checks and a rosterVersion
+update on the receiving staff record to help serialize competing
+approvals. The request status is also checked so that only a request in
+the correct state can be approved.
+
+9.  Frontend
+
+The React frontend provides separate experiences for staff and admins.
+
+Staff screens allow users to view shifts and requests, create requests,
+and respond to requests.
+
+Admin screens allow administrators to review, approve or reject requests
+and view roster-related information.
+
+Axios is used to communicate with the backend APIs.
+
+The interface should show: - Loading states while data is being
+fetched. - Error messages when an operation fails. - Updated request
+information after an action. - Buttons that are disabled when an action
+is already in progress or is not allowed.
+
+  ----------------------------------------------------
+  TASK 2 – DEBUGGING AND IMPROVING THE PROVIDED CODE
+  ----------------------------------------------------
+
+1.  What was Task 2?
+
+Task 2 involved examining existing SwapDesk code, finding bugs and
+weaknesses, and creating corrected copies.
+
+The important requirement was to preserve the original supplied files
+and put the corrected versions in a separate debug folder. This makes it
+possible to compare the original and corrected code.
+
+The original files included: - part2/server/routes/swapRequests.js -
+part2/server/controllers/swapRequestController.js -
+part2/client/src/pages/MyRequests.jsx
+
+The corrected copies were created under the debug directory, along with
+tests and documentation.
+
+2.  Corrected project structure
+
+The work created a structure similar to this:
+
+debug/ client/ src/ pages/ MyRequests.jsx server/ package.json routes/
+swapRequests.js controllers/ swapRequestController.js tests/
+swapRequestController.test.js
+
+DEBUGGING.md
+
+The original Part 2 files were kept separate and were not overwritten.
+
+3.  Request-listing security
+
+Problem: A server should not allow a user to pass arbitrary query
+parameters into a database filter. Unsafe filters can expose data or
+change the meaning of a query.
+
+Fix: The corrected listing logic accepts only the supported
+parameters: - status - cursor - limit
+
+It validates the status and cursor before using them. Unsupported query
+parameters are rejected.
+
+Why it matters: The API has a clear and controlled set of filters. Users
+cannot add unexpected database conditions.
+
+4.  Pagination and sorting
+
+Pagination means loading records in smaller groups rather than returning
+every record at once.
+
+Problems that can happen: - A user requests an extremely large number of
+records. - Invalid limits are accepted. - Records are skipped or
+repeated when the sort order is not stable. - A cursor does not contain
+enough information to continue reliably.
+
+Fixes: - The default page size is 20. - The maximum page size is 100. -
+The limit is validated. - Records are sorted by createdAt descending and
+then by _id descending. - The cursor contains both createdAt and id. -
+The query fetches one extra record to determine whether another page
+exists.
+
+Why it matters: The API returns a controlled amount of data and provides
+more reliable navigation between pages.
+
+5.  Approval validation
+
+Problem: An approval endpoint must not approve every request blindly. It
+must confirm that the request exists, is in the correct state, and still
+satisfies the roster rules.
+
+Fix: The corrected approval logic checks: - The request ID is valid. -
+The request exists. - The request is in pending_admin state. - The shift
+and relevant staff records exist. - The shift is eligible for
+approval. - The colleague is active and eligible. - The roster rules
+still pass. - The requester’s expected assignment exists.
+
+The server performs the checks again during approval. It must not rely
+only on checks that happened when the request was first created, because
+the roster may have changed since then.
+
+6.  Correct assignment transfer
+
+Problem: Deleting an assignment without checking which staff member owns
+it can remove the wrong record or hide an inconsistent roster.
+
+Fix: The approval logic checks for the exact assignment belonging to the
+requester and the selected shift. It then removes that assignment and
+creates the assignment for the colleague as part of the transaction.
+
+Why it matters: The system transfers the intended shift instead of
+changing an unrelated assignment.
+
+7.  Cancellation authorization
+
+Problem: A user must not be able to cancel another staff member’s
+request.
+
+Fix: The controller checks that the logged-in user’s ID matches the
+requester’s ID. It also checks that the request is in a status where
+cancellation is allowed.
+
+The update is conditional, so the request is changed only if it is still
+in an allowed state.
+
+Why it matters: This protects users from changing requests that do not
+belong to them and helps prevent invalid status changes.
+
+8.  Audit information
+
+Audit information records what happened to a request.
+
+For example, when a request is cancelled, the application can record: -
+The previous status. - The new status. - Who performed the action. -
+When the action happened.
+
+The corrected cancellation logic records the previous status as
+fromStatus. This makes the history more useful for tracing changes.
+
+9.  Frontend debugging
+
+The corrected MyRequests.jsx page improves the way the frontend
+communicates with the backend and handles user actions.
+
+The page uses the shared Axios API client and the relevant request
+endpoints.
+
+It also improves: - Loading indicators. - Error handling. - Busy states
+while an action is running. - Sent and received request filtering. -
+Refreshing the displayed data after a successful action. - Status
+display and action availability.
+
+Why it matters: Users receive clearer feedback and are less likely to
+submit the same action repeatedly.
+
+10. Regression tests
+
+A regression test checks that a bug which was fixed does not return
+later.
+
+The debug controller test file contains five tests covering areas such
+as:
+
+1.  Unsupported query filters are rejected.
+2.  Pagination uses a capped limit and stable sorting.
+3.  Cancellation checks that the request belongs to the current user.
+4.  Cancellation records the previous status in the audit information.
+5.  A mocked concurrent-approval scenario does not transfer the same
+    assignment twice.
+
+Important testing note: The concurrency test is a mocked test. It checks
+the controller’s behavior using simulated database operations. It is not
+the same as a full integration test against a real MongoDB replica set.
+A real concurrency integration test would provide stronger evidence of
+transaction behavior.
+
+  ----------------------------------------------
+  IMPORTANT TECHNICAL TERMS IN SIMPLE LANGUAGE
+  ----------------------------------------------
+
+API: A way for the frontend and backend to communicate.
+
+Backend: The server-side part of the application. It handles requests,
+business rules and database operations.
+
+Frontend: The part users see and interact with in the browser.
+
+Database: The place where application information is stored.
+
+Model: A definition of the structure of a type of database record.
+
+Middleware: A function that runs during a request, often to check login
+details or permissions.
+
+JWT: A signed token used to prove that a user has logged in.
+
+Authentication: Checking who the user is.
+
+Authorization: Checking what the user is allowed to do.
+
+Validation: Checking that data and actions follow the application’s
+rules.
+
+Pagination: Returning records in smaller pages instead of all at once.
+
+Cursor: A value that tells the API where to continue loading the next
+page.
+
+Transaction: A group of database operations that succeed together or are
+rolled back together.
+
+Concurrency: Two or more operations happening at the same time.
+
+Regression test: A test that checks whether a previously fixed problem
+has returned.
+
+Audit log: A record of actions and changes made in the application.
+
+  --------------------------
+  TESTING AND VERIFICATION
+  --------------------------
+
+The project work included checks such as: - Running the regression
+tests. - Checking JavaScript syntax for the debug routes and
+controller. - Running ESLint on the corrected React page. - Building the
+Task 1 React client.
+
+Commands used in the project included:
+
+Run the regression tests from the project root:
+
+./swapdesk/server/node_modules/.bin/vitest run
+debug/server/tests/swapRequestController.test.js –root .
+
+Run ESLint on the corrected page:
+
+./swapdesk/client/node_modules/.bin/eslint –config
+./swapdesk/client/eslint.config.js
+./debug/client/src/pages/MyRequests.jsx
+
+Build the Task 1 frontend:
+
+cd swapdesk/client npm run build
+
+A successful command should be confirmed from its actual terminal
+output. Do not claim a fresh test or build passed unless it has been run
+and the successful result has been checked.
+
+  --------------------------------------
+  TWO DESCRIPTION FIELDS FOR EACH TASK
+  --------------------------------------
+
+TASK 1 – DESCRIPTION FIELD 1: PROJECT OVERVIEW
+
+Developed SwapDesk, a full-stack staff shift-swapping application using
+the MERN stack (MongoDB, Express.js, React.js and Node.js). The
+application allows staff members to create shift-swap requests, send
+them to colleagues, accept or decline requests, and track request
+status. Administrators can review requests and approve or reject them.
+The application includes staff and admin roles, secure login, staff and
+shift management, assignment management and request history.
+
+TASK 1 – DESCRIPTION FIELD 2: IMPLEMENTATION AND TECHNICAL SOLUTIONS
+
+Implemented REST APIs using Node.js, Express.js and MongoDB with
+Mongoose models. Added roster validation to check clinical role
+requirements, staff active status, licence validity, overlapping shifts,
+the 48-hour weekly working limit and duplicate assignments. Built a
+multi-stage approval workflow in which a colleague’s acceptance is
+followed by admin approval. Used MongoDB transactions and concurrency
+safeguards to protect assignment transfers. Developed React dashboards
+and connected them to backend APIs using Axios, with loading and error
+handling.
+
+TASK 2 – DESCRIPTION FIELD 1: DEBUGGING OVERVIEW
+
+Reviewed the provided SwapDesk server routes, controller and React
+MyRequests page to identify bugs and improve reliability. The debugging
+work focused on request validation, query security, pagination, approval
+and cancellation rules, assignment handling, audit information,
+concurrency and frontend behavior. The original supplied files were
+preserved, and corrected copies were created separately under the debug
+directory.
+
+TASK 2 – DESCRIPTION FIELD 2: FIXES, TESTING AND DOCUMENTATION
+
+Improved request listing by allowing only supported query parameters,
+validating status and cursor values, limiting page size and using stable
+cursor-based sorting. Improved approval and cancellation by checking
+request ownership and status, revalidating roster rules, transferring
+the exact assignment and recording audit details. Used transaction-based
+approval logic and concurrency safeguards. Improved the React page’s API
+integration, loading states, error handling and request updates. Added
+regression tests for key server-side issues and documented the problems,
+causes and fixes in DEBUGGING.md. The concurrency regression test uses
+mocked database operations and is not a real replica-set integration
+test.
+
+  -----------------
+  FINAL CHECKLIST
+  -----------------
+
+TASK 1: [ ] Application starts successfully. [ ] MongoDB connection
+works. [ ] Staff login and admin login work. [ ] Staff can view their
+shifts and requests. [ ] Staff can create a swap request. [ ] Colleagues
+can accept or decline requests. [ ] Users can cancel requests when
+allowed. [ ] Admin can view and review requests. [ ] Admin approval
+transfers the assignment correctly. [ ] Roster validation rules are
+enforced. [ ] Frontend build completes successfully.
+
+TASK 2: [ ] Original Part 2 files remain preserved. [ ] Corrected files
+exist under debug/. [ ] Request query parameters are validated. [ ]
+Pagination is capped and stable. [ ] Approval checks the correct request
+state. [ ] Roster rules are checked again during approval. [ ]
+Assignment transfer is handled transactionally. [ ] Cancellation checks
+request ownership and status. [ ] Audit information is recorded. [ ]
+Regression tests run successfully. [ ] Corrected frontend passes lint
+checks. [ ] DEBUGGING.md explains the issues and fixes.
+
+FINAL NOTE
+
+The purpose of Task 1 is to build a working and safe shift-swapping
+application.
+
+The purpose of Task 2 is to inspect existing code, find problems,
+correct them without destroying the original files, and demonstrate the
+fixes through tests and documentation.
+
+When explaining the project, focus on the reason behind each feature: -
+Roster validation protects staff and patients. - Role-based access
+protects administrative actions. - Transactions keep assignment changes
+consistent. - Concurrency safeguards reduce the risk of conflicting
+approvals. - Pagination keeps listing APIs manageable. - Regression
+tests help prevent old bugs from returning.
